@@ -9,6 +9,7 @@ var assert = require('assert'),
 
 /* Options:
 **   - socketPath: Can contain a custom socket path
+**   - data: Object passed as an argument to "connection-attempt" event listeners
 */
 function SingleInstance(appName, options) {
   assert(appName, "Missing required parameter 'appName'.");
@@ -29,7 +30,7 @@ SingleInstance.prototype.lock = function(callback) {
 
   var promise = new RSVP.Promise(function(resolve, reject) {
     var client = net.connect({ path: self._socketPath }, function() {
-      client.write('connectionAttempt', function() {
+      client.write(JSON.stringify(self._options.data), function() {
         reject('An application is already running')
       });
     });
@@ -43,8 +44,8 @@ SingleInstance.prototype.lock = function(callback) {
         }
       }
       self._server = net.createServer(function(connection) {
-        connection.on('data', function() {
-          self.emit('connection-attempt');
+        connection.on('data', function(buffer) {
+          self.emit('connection-attempt', JSON.parse(buffer.toString()));
         });
       });
       resolve(true);
